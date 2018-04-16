@@ -26,5 +26,5 @@ if __name__ == "__main__":
     config = vars(args)
     if config['config_file'] is None:
         config['config_file'] = '%s_%s_Config' % (config['data_set_name'], config['model_mane'])
-    config.update(getattr(importlib.import_module('configs.%s' % config['config_file']), 'config'))
+    config.update(getattr(importlib.import_module('configures.%s' % config['config_file']), 'config'))
     main(config)

@@ -1,8 +1,7 @@
 __author__ = 'JunSong<songjun54cm@gmail.com>'
 
 
-
-class TFCNNModel(object):
+class KerasCNNModel(object):
     def __init__(self):
         pass
 
