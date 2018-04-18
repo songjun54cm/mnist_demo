@@ -7,7 +7,7 @@ class CNNModel(BasicModel):
     def __init__(self, config):
         super(CNNModel, self).__init__(config)
 
-    def init_model(self):
+    def create(self):
         pass
 
     def forward_sample(self, sample_data):
