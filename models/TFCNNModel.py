@@ -59,11 +59,11 @@ class TFCNNModel(object):
 
         logits = tf.layers.dense(inputs=dropout, units=10)
 
-        probabilities = tf.nn.softmax(logits, name='softmax_tensor')
+        probabilities = tf.nn.softmax(logits, name='probabilities')
         self.probabilities = probabilities
-        pred_class = tf.argmax(input=logits, axis=1, name='pred_class')
+        pred_class = tf.argmax(input=logits, axis=1, name='predict_class')
         self.predict_class = pred_class
-        pred_accuracy = tf.reduce_mean(tf.to_float(tf.equal(pred_class, label_input_layer)), name='pred_accuracy')
+        pred_accuracy = tf.reduce_mean(tf.to_float(tf.equal(pred_class, label_input_layer)), name='predict_accuracy')
         self.predict_accuracy = pred_accuracy
 
         # Calculate Loss
@@ -96,9 +96,62 @@ class TFCNNModel(object):
             })
         return total_loss, model_loss, regu_loss
 
-    def save_model(self, target_path):
-        pass
+    def predict_probability(self, feature):
+        probs = self.session.run(
+            self.probabilities,
+            feed_dict={
+                self.input_feature:feature
+            }
+        )
+        return probs
 
-    def load_model(self, source_path):
+    def predict_label(self, feature):
+        label = self.session.run(
+            self.predict_class,
+            feed_dict={
+                self.input_feature: feature
+            }
+        )
+        return label
+
+    def save(self, target_path):
+        builder = tf.saved_model.builder.SavedModelBuilder(target_path)
+        builder.add_meta_graph_and_variables(self.session, [tf.saved_model.tag_constants.TRAINING], clear_device=True)
+        model_path = builder.save()
+        logging.info('save model into %s' % model_path)
+
+    def save_model_saver(self, target_path):
+        saver = tf.train.Saver()
+        saver.save(self.session, os.path.join(target_path, 'model'))
+        logging.info('save model into %s' % target_path)
+
+
+    def load(self, source_path):
+        if self.session is None:
+            self.session = tf.Session()
+        tf.saved_model.loader.load(self.session, [tf.saved_model.tag_constants.TRAINING], source_path)
+        graph = tf.get_default_graph()
+
         # for op in tf.get_default_graph().get_operations():
         #     print(str(op.name))
+
+        self.input_label = graph.get_tensor_by_name("input_label:0")
+        self.input_feature = graph.get_tensor_by_name("input_feature:0")
+        self.probabilities = graph.get_tensor_by_name("probabilities:0")
+        self.predict_class = graph.get_tensor_by_name("predict_class:0")
+        self.predict_accuracy = graph.get_tensor_by_name("predict_accuracy:0")
+
+
+    def load_model_saver(self, source_path):
+        if self.session is None:
+            self.session = tf.Session()
+        meta_path = os.path.join(source_path, 'model.meta')
+        saver = tf.train.import_meta_graph(meta_path, clear_devices=True)
+        saver.restore(self.session, tf.train.latest_checkpoint(source_path))
+
+        graph = tf.get_default_graph()
+        self.input_label = graph.get_tensor_by_name("input_label:0")
+        self.input_feature = graph.get_tensor_by_name("input_feature:0")
+        self.probabilities = graph.get_tensor_by_name("probabilities:0")
+        self.predict_class = graph.get_tensor_by_name("predict_class:0")
+        self.predict_accuracy = graph.get_tensor_by_name("predict_accuracy:0")
